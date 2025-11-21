@@ -1,0 +1,28 @@
+name: Hourly Job Import
+
+on:
+  schedule:
+    # Runs every hour at minute 0
+    - cron: '0 * * * *'
+  workflow_dispatch: # Allows manual trigger
+
+jobs:
+  import-all-feeds:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Import All Feeds
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+        run: |
+          # Parse FEEDS_JSON and trigger import for each feed
+          FEEDS='["https://jobicy.com/?feed=job_feed","https://jobicy.com/?feed=job_feed&job_categories=smm&job_types=full-time","https://jobicy.com/?feed=job_feed&job_categories=seller&job_types=full-time&search_region=france","https://jobicy.com/?feed=job_feed&job_categories=design-multimedia","https://jobicy.com/?feed=job_feed&job_categories=data-science","https://jobicy.com/?feed=job_feed&job_categories=copywriting","https://jobicy.com/?feed=job_feed&job_categories=business","https://jobicy.com/?feed=job_feed&job_categories=management","https://www.higheredjobs.com/rss/articleFeed.cfm"]'
+          
+          echo "$FEEDS" | jq -r '.[]' | while read feed; do
+            echo "Importing feed: $feed"
+            curl -X POST "$BACKEND_URL/api/import/start" \
+              -H "Content-Type: application/json" \
+              -d "{\"feedUrl\": \"$feed\"}" \
+              --max-time 60 \
+              --fail || echo "Failed to import: $feed"
+            sleep 2  # Small delay between requests
+          done

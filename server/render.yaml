@@ -1,0 +1,56 @@
+services:
+  - type: web
+    name: job-import-api
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: MONGO_URI
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: BULLMQ_PREFIX
+        value: job_import
+      - key: BATCH_SIZE
+        value: "200"
+      - key: WORKER_CONCURRENCY
+        value: "10"
+      - key: PORT
+        value: "3001"
+      - key: FEEDS_JSON
+        sync: false
+
+  - type: worker
+    name: job-import-worker
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm run worker:prod
+    envVars:
+      - key: MONGO_URI
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: BULLMQ_PREFIX
+        value: job_import
+      - key: BATCH_SIZE
+        value: "200"
+      - key: WORKER_CONCURRENCY
+        value: "10"
+
+  - type: cron
+    name: job-import-cron
+    schedule: "0 * * * *"
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: node dist/cron.js
+    envVars:
+      - key: MONGO_URI
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: BULLMQ_PREFIX
+        value: job_import
+      - key: BATCH_SIZE
+        value: "200"
+      - key: FEEDS_JSON
+        sync: false
