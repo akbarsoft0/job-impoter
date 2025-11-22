@@ -35,7 +35,10 @@ export async function fetchFeed(feedUrl: string): Promise<any> {
 
 export async function parseXMLFeed(xmlData: string, feedUrl: string): Promise<ParsedJob[]> {
   try {
-    const result = await parseXML(xmlData);
+    // xml2js parseString returns `any` at runtime but is typed as `unknown` via promisify.
+    // Narrow the type so we can safely access rss/channel/feed while still allowing
+    // different XML shapes.
+    const result = (await parseXML(xmlData)) as any;
     const jobs: ParsedJob[] = [];
 
     // Handle different RSS/XML formats

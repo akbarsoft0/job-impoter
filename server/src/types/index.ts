@@ -16,7 +16,7 @@ export interface Job {
 }
 
 export interface ImportLog {
-  _id?: string;
+  _id?: string; // stored as ObjectId in Mongo, represented as string in API layer
   timestamp: Date;
   fileName: string; // feed URL
   totalFetched: number;

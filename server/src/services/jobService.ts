@@ -1,6 +1,6 @@
-import { Db, BulkWriteOperation, ObjectId } from 'mongodb';
+import { AnyBulkWriteOperation, ObjectId } from 'mongodb';
 import { Job, ImportLog } from '../types';
-import { getDatabase } from '../config/database';
+import { connectDatabase } from '../config/database';
 
 export interface BulkUpsertResult {
   newJobs: number;
@@ -9,11 +9,11 @@ export interface BulkUpsertResult {
 }
 
 export async function bulkUpsertJobs(jobs: Job[]): Promise<BulkUpsertResult> {
-  const db = getDatabase();
+  const db = await connectDatabase();
   const jobsCollection = db.collection<Job>('jobs');
 
   const now = new Date();
-  const operations: BulkWriteOperation<Job>[] = [];
+  const operations: AnyBulkWriteOperation<Job>[] = [];
 
   const failedJobs: Array<{ id: string; reason: string }> = [];
   let newJobs = 0;
@@ -69,7 +69,7 @@ export async function bulkUpsertJobs(jobs: Job[]): Promise<BulkUpsertResult> {
 }
 
 export async function saveRawFeed(feedUrl: string, data: any): Promise<void> {
-  const db = getDatabase();
+  const db = await connectDatabase();
   const rawFeedsCollection = db.collection('raw_feeds');
 
   await rawFeedsCollection.insertOne({
@@ -89,7 +89,7 @@ export async function createImportLog(
   fileName: string,
   totalFetched: number
 ): Promise<string> {
-  const db = getDatabase();
+  const db = await connectDatabase();
   const importLogsCollection = db.collection<ImportLog>('import_logs');
 
   const log: Omit<ImportLog, '_id'> = {
@@ -111,7 +111,7 @@ export async function updateImportLog(
   logId: string,
   updates: any
 ): Promise<void> {
-  const db = getDatabase();
+  const db = await connectDatabase();
   const importLogsCollection = db.collection<ImportLog>('import_logs');
 
   const updateQuery: any = {};
@@ -123,8 +123,9 @@ export async function updateImportLog(
     updateQuery.$set = updates;
   }
 
+  const _id = new ObjectId(logId);
   await importLogsCollection.updateOne(
-    { _id: new ObjectId(logId) },
+    { _id } as any,
     updateQuery
   );
 }
@@ -134,7 +135,7 @@ export async function getImportLogs(
   limit: number = 20,
   fileName?: string
 ): Promise<{ logs: ImportLog[]; total: number }> {
-  const db = getDatabase();
+  const db = await connectDatabase();
   const importLogsCollection = db.collection<ImportLog>('import_logs');
 
   const query: any = {};
@@ -158,12 +159,13 @@ export async function getImportLogs(
 }
 
 export async function getImportLogById(logId: string): Promise<ImportLog | null> {
-  const db = getDatabase();
+  const db = await connectDatabase();
   const importLogsCollection = db.collection<ImportLog>('import_logs');
 
   let log: ImportLog | null;
   try {
-    log = await importLogsCollection.findOne({ _id: new ObjectId(logId) });
+    const _id = new ObjectId(logId);
+    log = await importLogsCollection.findOne({ _id } as any);
   } catch (error) {
     // Invalid ObjectId format
     log = null;

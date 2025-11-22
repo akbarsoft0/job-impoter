@@ -1,17 +1,20 @@
-import 'dotenv/config';
-import { fetchAndParseFeed } from './feedParser';
-import { createImportLog, updateImportLog, saveRawFeed } from './jobService';
-import { getQueue } from '../config/redis';
-import { Job } from '../types';
+import "dotenv/config";
+import { fetchAndParseFeed } from "./feedParser";
+import { createImportLog, updateImportLog, saveRawFeed } from "./jobService";
+import { getQueue } from "../config/redis";
+import { Job } from "../types";
 
 export async function processAllFeeds() {
   const feedsJson = process.env.FEEDS_JSON;
+
+  console.log("feedsJson::", feedsJson);
+
   if (!feedsJson) {
-    throw new Error('FEEDS_JSON environment variable is not set');
+    throw new Error("FEEDS_JSON environment variable is not set");
   }
 
   const feeds: string[] = JSON.parse(feedsJson);
-  const batchSize = parseInt(process.env.BATCH_SIZE || '200', 10);
+  const batchSize = parseInt(process.env.BATCH_SIZE || "200", 10);
 
   console.log(`Processing ${feeds.length} feeds...`);
 
@@ -26,7 +29,7 @@ export async function processAllFeeds() {
       try {
         await saveRawFeed(feedUrl, parsedJobs);
       } catch (error) {
-        console.error('Failed to save raw feed:', error);
+        console.error("Failed to save raw feed:", error);
         // Continue even if raw feed save fails
       }
 
@@ -45,25 +48,33 @@ export async function processAllFeeds() {
 
       for (let i = 0; i < jobs.length; i += batchSize) {
         const batch = jobs.slice(i, i + batchSize);
-        
-        await queue.add('process-job-batch', {
-          feedUrl,
-          importLogId,
-          jobs: batch,
-        }, {
-          jobId: `${importLogId}-${i / batchSize}`,
-        });
+
+        await queue.add(
+          "process-job-batch",
+          {
+            feedUrl,
+            importLogId,
+            jobs: batch,
+          },
+          {
+            jobId: `${importLogId}-${i / batchSize}`,
+          }
+        );
       }
 
       // Update import log status
-      await updateImportLog(importLogId, { status: 'processing' });
+      await updateImportLog(importLogId, { status: "processing" });
 
-      console.log(`Enqueued ${jobs.length} jobs in ${Math.ceil(jobs.length / batchSize)} batches for feed: ${feedUrl}`);
+      console.log(
+        `Enqueued ${jobs.length} jobs in ${Math.ceil(
+          jobs.length / batchSize
+        )} batches for feed: ${feedUrl}`
+      );
     } catch (error) {
       console.error(`Error processing feed ${feedUrl}:`, error);
       // Continue with next feed
     }
   }
 
-  console.log('All feeds processed');
+  console.log("All feeds processed");
 }

@@ -89,10 +89,27 @@ async function main() {
   });
 
   worker.on('error', (err) => {
-    console.error('Worker error:', err);
+    // Log but don't crash on connection errors - these are usually recoverable
+    if (err instanceof Error && (err.message.includes('ECONNRESET') || err.message.includes('ETIMEDOUT'))) {
+      console.warn('⚠️  Connection error detected (MongoDB connection will be restored automatically):', err.message);
+      console.log('Worker will continue processing. Connection will be restored on next database operation.');
+    } else {
+      console.error('Worker error:', err);
+    }
   });
 
+  // Periodic health check to verify MongoDB connection
+  setInterval(async () => {
+    try {
+      await connectDatabase();
+      // Connection is healthy (no log needed to avoid spam)
+    } catch (error) {
+      console.warn('⚠️  MongoDB health check failed. Will retry on next operation.');
+    }
+  }, 60000); // Check every 60 seconds
+
   console.log('Worker started and waiting for jobs...');
+  console.log('MongoDB connection health checks running every 60 seconds');
 
   // Graceful shutdown
   process.on('SIGTERM', async () => {
